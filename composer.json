@@ -1,0 +1,9 @@
+{
+    "name": "anomaly/fedex_shipping_method-extension",
+    "type": "streams-addon",
+    "autoload": {
+        "psr-4": {
+            "Anomaly\\FedexShippingMethodExtension\\": "src/"
+        }
+    }
+}
