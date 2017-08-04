@@ -1,8 +1,9 @@
 <?php namespace Anomaly\FedexShippingMethodExtension\Command;
 
 use Anomaly\ConfigurationModule\Configuration\Contract\ConfigurationRepositoryInterface;
-use Anomaly\OrdersModule\Order\Contract\OrderInterface;
 use Anomaly\ShippingModule\Method\Extension\MethodExtension;
+use Anomaly\StoreModule\Contract\AddressInterface;
+use Anomaly\StoreModule\Contract\ShippableInterface;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 
 /**
@@ -19,11 +20,11 @@ class GetQuote
     use DispatchesJobs;
 
     /**
-     * The order interface.
+     * The shippable interface.
      *
-     * @var OrderInterface
+     * @var ShippableInterface
      */
-    protected $order;
+    protected $shippable;
 
     /**
      * The shipping extension.
@@ -33,15 +34,24 @@ class GetQuote
     protected $extension;
 
     /**
+     * The parameter array.
+     *
+     * @var array
+     */
+    protected $address;
+
+    /**
      * Create a new GetQuote instance.
      *
-     * @param MethodExtension $extension
-     * @param OrderInterface  $order
+     * @param MethodExtension    $extension
+     * @param ShippableInterface $shippable
+     * @param AddressInterface   $address
      */
-    public function __construct(MethodExtension $extension, OrderInterface $order)
+    public function __construct(MethodExtension $extension, ShippableInterface $shippable, AddressInterface $address)
     {
-        $this->order     = $order;
+        $this->shippable = $shippable;
         $this->extension = $extension;
+        $this->address   = $address;
     }
 
     /**

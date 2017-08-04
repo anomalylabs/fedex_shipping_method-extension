@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'title'       => 'Fedex Shipping Method',
+    'title'       => 'Fedex',
     'name'        => 'Fedex Shipping Method Extension',
-    'description' => ''
+    'description' => 'Dynamically generate shipping rates using your FedEx account.',
 ];
