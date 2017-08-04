@@ -2,6 +2,9 @@
 
 use Anomaly\ShippingModule\Method\Contract\MethodInterface;
 use Anomaly\ShippingModule\Method\Extension\MethodExtension;
+use FedEx\RateService\ComplexType\RateRequest;
+use FedEx\RateService\ComplexType\WebAuthenticationCredential;
+use FedEx\RateService\ComplexType\WebAuthenticationDetail;
 use Illuminate\Contracts\Config\Repository;
 
 /**
@@ -33,14 +36,21 @@ class GetRate
      * Handle the command.
      *
      * @param Repository $config
-     * @return Rate
+     * @return RateRequest
      */
     public function handle(Repository $config)
     {
-        return new Rate(
-            $config->get('anomaly.extension.fedex_shipping_method::config.access_key'),
-            $config->get('anomaly.extension.fedex_shipping_method::config.username'),
-            $config->get('anomaly.extension.fedex_shipping_method::config.password')
+        $rateRequest    = new RateRequest();
+        $userCredential = new WebAuthenticationCredential();
+
+        $userCredential
+            ->setKey($config->get('anomaly.extension.fedex_shipping_method::config.access_key'))
+            ->setPassword($config->get('anomaly.extension.fedex_shipping_method::config.password'));
+
+        $rateRequest->setWebAuthenticationDetail(
+            (new WebAuthenticationDetail())->setUserCredential($userCredential)
         );
+
+        return $rateRequest;
     }
 }

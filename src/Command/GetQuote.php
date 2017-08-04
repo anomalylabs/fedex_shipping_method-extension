@@ -4,6 +4,26 @@ use Anomaly\ConfigurationModule\Configuration\Contract\ConfigurationRepositoryIn
 use Anomaly\ShippingModule\Method\Extension\MethodExtension;
 use Anomaly\StoreModule\Contract\AddressInterface;
 use Anomaly\StoreModule\Contract\ShippableInterface;
+use FedEx\RateService\ComplexType\Address;
+use FedEx\RateService\ComplexType\ClientDetail;
+use FedEx\RateService\ComplexType\Dimensions;
+use FedEx\RateService\ComplexType\Party;
+use FedEx\RateService\ComplexType\Payment;
+use FedEx\RateService\ComplexType\Payor;
+use FedEx\RateService\ComplexType\RateReply;
+use FedEx\RateService\ComplexType\RateRequest;
+use FedEx\RateService\ComplexType\RequestedPackageLineItem;
+use FedEx\RateService\ComplexType\RequestedShipment;
+use FedEx\RateService\ComplexType\TransactionDetail;
+use FedEx\RateService\ComplexType\VersionId;
+use FedEx\RateService\ComplexType\Weight;
+use FedEx\RateService\Request;
+use FedEx\RateService\SimpleType\DropoffType;
+use FedEx\RateService\SimpleType\LinearUnits;
+use FedEx\RateService\SimpleType\PaymentType;
+use FedEx\RateService\SimpleType\RateRequestType;
+use FedEx\RateService\SimpleType\WeightUnits;
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 
 /**
@@ -58,78 +78,130 @@ class GetQuote
      * Handle the command.
      *
      * @param ConfigurationRepositoryInterface $configuration
+     * @param Repository                       $config
      */
-    public function handle(ConfigurationRepositoryInterface $configuration)
+    public function handle(ConfigurationRepositoryInterface $configuration, Repository $config)
     {
-        $method = $this->order->getShippingMethod();
+        $method = $this->extension->getMethod();
 
-        /* @var Rate $rate */
-        $rate = $this->dispatch(new GetRate($method));
+        /* @var RateRequest $rateRequest */
+        $rateRequest = $this->dispatch(new GetRate($method));
 
-        $code = $configuration->value('anomaly.extension.fedex_shipping_method::service', $method->getSlug());
+        $code = $configuration->value('anomaly.extension.fedex_shipping_method::service', $method->getId());
 
-        $shipment = new Shipment();
+        $accountNumber = $config->get('anomaly.extension.fedex_shipping_method::config.account_number');
+        $meterNumber   = $config->get('anomaly.extension.fedex_shipping_method::config.meter_number');
 
-        /**
-         * Set the shipping service.
-         */
-        $service = new Service();
-        $service->setCode($code);
+        //ClientDetail
+        $clientDetail = new ClientDetail();
+        $clientDetail
+            ->setAccountNumber($accountNumber)
+            ->setMeterNumber($meterNumber);
 
-        $shipment->setService($service);
+        $rateRequest->setClientDetail($clientDetail);
 
-        /**
-         * Set the shipper's information.
-         */
-        $shipperAddress = $shipment
-            ->getShipper()
-            ->getAddress();
-        $shipperAddress->setPostalCode('61241');
+        //TransactionDetail
+        $transactionDetail = new TransactionDetail();
+        $transactionDetail->setCustomerTransactionId('Testing Rate Service request');
+        $rateRequest->setTransactionDetail($transactionDetail);
 
-        /**
-         * Set the origin information.
-         */
-        $fromAddress = new Address();
-        $fromAddress->setPostalCode('61241');
-        $shipFrom = new ShipFrom();
-        $shipFrom->setAddress($fromAddress);
+        //VersionId
+        $versionId = new VersionId();
+        $versionId
+            ->setServiceId('crs')
+            ->setMajor(10)
+            ->setIntermediate(0)
+            ->setMinor(0);
+        $rateRequest->setVersion($versionId);
 
-        $shipment->setShipFrom($shipFrom);
+        //OPTIONAL ReturnTransitAndCommit
+        $rateRequest->setReturnTransitAndCommit(true);
 
-        /**
-         * Set the destination information.
-         */
-        $shipTo = $shipment->getShipTo();
-        $shipTo->setCompanyName('Test Ship To');
-        $shipToAddress = $shipTo->getAddress();
-        $shipToAddress->setPostalCode('99205');
+        //RequestedShipment
+        $requestedShipment = new RequestedShipment();
+        $requestedShipment->setDropoffType(DropoffType::_REGULAR_PICKUP);
+        $requestedShipment->setShipTimestamp(date('c'));
+        $rateRequest->setRequestedShipment($requestedShipment);
 
-        /**
-         * Add a package to the shipment.
-         */
-        $package = new Package();
-        $package->getPackagingType()->setCode(PackagingType::PT_PACKAGE);
-        $package->getPackageWeight()->setWeight(10);
+        //RequestedShipment/Shipper
+        $shipper        = new Party();
+        $shipperAddress = new Address();
+        $shipperAddress
+            ->setStreetLines(array('10 Fed Ex Pkwy'))
+            ->setCity('Memphis')
+            ->setStateOrProvinceCode('TN')
+            ->setPostalCode(38115)
+            ->setCountryCode('US');
+        $shipper->setAddress($shipperAddress);
+        $requestedShipment->setShipper($shipper);
 
-        $dimensions = new Dimensions();
-        $dimensions->setHeight(10);
-        $dimensions->setWidth(10);
-        $dimensions->setLength(10);
+        //RequestedShipment/Recipient
+        $recipient        = new Party();
+        $recipientAddress = new Address();
+        $recipientAddress
+            ->setStreetLines(array($this->address->getStreetAddress()))
+            ->setCity($this->address->getCity())
+            ->setStateOrProvinceCode($this->address->getState())
+            ->setPostalCode($this->address->getPostalCode())
+            ->setCountryCode($this->address->getCountry());
+        $recipient->setAddress($recipientAddress);
+        $requestedShipment->setRecipient($recipient);
 
-        $unit = new UnitOfMeasurement();
-        $unit->setCode(UnitOfMeasurement::UOM_IN);
+        //RequestedShipment/ShippingChargesPayment
+        $shippingChargesPayment = new Payment();
+        $shippingChargesPayment->setPaymentType(PaymentType::_SENDER);
+        $payor = new Payor();
+        $payor
+            ->setAccountNumber($accountNumber)
+            ->setCountryCode('US');
+        $shippingChargesPayment->setPayor($payor);
+        $requestedShipment->setShippingChargesPayment($shippingChargesPayment);
 
-        $dimensions->setUnitOfMeasurement($unit);
-        $package->setDimensions($dimensions);
+        //RequestedShipment/RateRequestType(s)
+        $requestedShipment->setRateRequestTypes(
+            [
+                RateRequestType::_LIST,
+                RateRequestType::_ACCOUNT,
+            ]
+        );
 
-        $shipment->addPackage($package);
+        //RequestedShipment/PackageCount
+        $requestedShipment->setPackageCount(1);
 
-        /* @var RateResponse $response */
-        $response = $rate->getRate($shipment);
+        //RequestedShipment/RequestedPackageLineItem(s)
+        $itemWeight = new Weight();
+        $itemWeight
+            ->setUnits(WeightUnits::_LB)
+            ->setValue(2.0);
+        $itemDimensions = new Dimensions();
+        $itemDimensions
+            ->setLength(10)
+            ->setWidth(10)
+            ->setHeight(3)
+            ->setUnits(LinearUnits::_IN);
+        $item = new RequestedPackageLineItem();
+        $item
+            ->setWeight($itemWeight)
+            ->setDimensions($itemDimensions)
+            ->setGroupPackageCount(1);
+        $requestedShipment->setRequestedPackageLineItems([$item]);
+        $rateRequest->setRequestedShipment($requestedShipment);
+        $rateServiceRequest = new Request();
 
-        /* @var RatedShipment $quote */
-        $quote = $response->RatedShipment[0];
+        /* @var RateReply $response */
+        //$rateServiceRequest->getSoapClient()->__setLocation('https://ws.fedex.com:443/web-services/rate'); //use the production web service
+        $response = $rateServiceRequest->getGetRatesReply($rateRequest);
 
-        return $quote->TotalCharges->MonetaryValue;
+        foreach ($response->RateReplyDetails as $detail) {
+            if ($detail->ServiceType == $code) {
+                return (float)$detail
+                    ->RatedShipmentDetails[0]
+                    ->ShipmentRateDetail
+                    ->TotalNetChargeWithDutiesAndTaxes
+                    ->Amount;
+            }
+        }
+
+        return null;
     }
 }
