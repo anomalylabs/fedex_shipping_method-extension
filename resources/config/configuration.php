@@ -7,11 +7,11 @@ return [
         'config'   => [
             'options' => [
                 'anomaly.extension.fedex_shipping_method::configuration.service.domestic'      => [
-                    'FEDEX_GROUND' => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FEDEX_GROUND',
-                    'FEDEX_2_DAY'  => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FEDEX_2_DAY',
-                    //'FEDEX_2_DAY_AM'                      => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FEDEX_2_DAY_AM',
-                    //'FEDEX_EXPRESS_SAVER'                 => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FEDEX_EXPRESS_SAVER',
+                    'FEDEX_GROUND'        => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FEDEX_GROUND',
+                    'FEDEX_2_DAY'         => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FEDEX_2_DAY',
+                    'FEDEX_EXPRESS_SAVER' => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FEDEX_EXPRESS_SAVER',
                     //'STANDARD_OVERNIGHT'                  => 'anomaly.extension.fedex_shipping_method::configuration.service.option.STANDARD_OVERNIGHT',
+                    //'FEDEX_2_DAY_AM'                      => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FEDEX_2_DAY_AM',
                     //'FIRST_OVERNIGHT'                     => 'anomaly.extension.fedex_shipping_method::configuration.service.option.FIRST_OVERNIGHT',
                     //'PRIORITY_OVERNIGHT'                  => 'anomaly.extension.fedex_shipping_method::configuration.service.option.PRIORITY_OVERNIGHT',
                     //'GROUND_HOME_DELIVERY'                => 'anomaly.extension.fedex_shipping_method::configuration.service.option.GROUND_HOME_DELIVERY',
