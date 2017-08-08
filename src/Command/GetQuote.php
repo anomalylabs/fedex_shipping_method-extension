@@ -192,6 +192,10 @@ class GetQuote
         //$rateServiceRequest->getSoapClient()->__setLocation('https://ws.fedex.com:443/web-services/rate'); //use the production web service
         $response = $rateServiceRequest->getGetRatesReply($rateRequest);
 
+        if (!$response->HighestSeverity == 'ERROR') {
+            return null;
+        }
+
         foreach ($response->RateReplyDetails as $detail) {
             if ($detail->ServiceType == $code) {
                 return (float)$detail
